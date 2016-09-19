@@ -69,7 +69,7 @@ char location[11];
 char id[11];
 char debugtopic[40] = "debug";
 char pubtopic[40] = "sensors";
-String swversion = "Spaceloop3 v0.1";
+const String swversion = "Spaceloop3 v0.2";
 
 String chipid;
 char chipidchar[6];
@@ -193,7 +193,7 @@ void setup() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm };
+SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm};
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
@@ -209,6 +209,7 @@ void loop() {
     Serial.println("Attempting MQTT Reconnect.");
     reconnect();
   }
+  
   client.loop();
 
   if (digitalRead(Button) == LOW ) {
@@ -220,12 +221,11 @@ void loop() {
     readDHT();
     starttijd = millis();
   }
+
   FastLED.delay(1000 / FRAMES_PER_SECOND);
-  if (spacestate == true) {
-    rainbow();
-  } else {
-    confetti();
-  }
+
+  gPatterns[gCurrentPatternNumber]();
+
 }
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
@@ -385,18 +385,24 @@ void onMqttMessage(char* topic, byte * payload, unsigned int length) {
       Serial.println("Revspace is open");
       if (spacestate == LOW) {
         spacestate = HIGH;
+        gCurrentPatternNumber = 0;
       }
     } else {
       // If it ain't open, it's closed! (saves a lot of time doing strcmp).
       Serial.println("Revspace is dicht");
       if (spacestate == HIGH) {
         spacestate = LOW;
+        gCurrentPatternNumber = 2;
       }
     }
   }
 
   if (strcmp(topic, "revspace/button/nomz") == 0) {
+
+    
     for (int repeats = 0; repeats < 40; repeats++) {
+      client.loop();
+      
       for (int odd = 1; odd < NUM_LEDS; odd = odd + 2) {
         leds[odd] = 0xFFA500;
       }
@@ -404,6 +410,7 @@ void onMqttMessage(char* topic, byte * payload, unsigned int length) {
         leds[even] = 0x0000FF;
       }
       FastLED.show();
+      
       digitalWrite(Buzzer, HIGH);
       delay(350);
 
@@ -421,6 +428,8 @@ void onMqttMessage(char* topic, byte * payload, unsigned int length) {
 
   if (strcmp(topic, "revspace/button/doorbell") == 0) {
     for (int repeats = 0; repeats < 40; repeats++) {
+      client.loop();
+      
       for (int odd = 1; odd < NUM_LEDS; odd = odd + 2) {
         leds[odd] = 0xFFFF00;
       }
